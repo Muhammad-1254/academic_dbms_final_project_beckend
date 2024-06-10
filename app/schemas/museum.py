@@ -3,14 +3,9 @@ from db.models.data_types import Role
 from db.models.data_types import (
     EpochTypeEnum,
     OriginEnum,
-    OtherTypeEnum,
     ObjectStyleEnum,
-    PaintingDrawnOnEnum,
-    PaintingTypeEnum,
-    SculptureMaterialEnum,
     StatusTypeEnum,
-    ObjectOwnership,
-    CollectionType,
+    GenderEnum,
     ArtObjectType
 )
 import datetime
@@ -19,36 +14,43 @@ from typing import Optional
 
 class ArtistCreate(BaseModel):
     name: str
-    description: str
-    main_style: ObjectStyleEnum
-    epoch: EpochTypeEnum
-    origin_country: OriginEnum
-    date_of_birth: datetime.date
-    date_of_died: datetime.date
+    description: Optional[str] = None
+    artist_bio:Optional[str] = None
+    epoch: Optional[EpochTypeEnum] =None
+    gender: Optional[GenderEnum] = None
+    origin_country: Optional[str] = None
+    date_of_birth: Optional[datetime.date] = None
+    date_of_died: Optional[datetime.date] = None
+    wiki_qid:Optional[str] = None
+    ulan:Optional[str] = None
 
 
 class ArtObjectBase(BaseModel):
     title: str
     description: str
+    dimensions:Optional[str] = None
+    department:Optional[str] = None
     style: ObjectStyleEnum
-    epoch: EpochTypeEnum
-    origin_country: OriginEnum
-    year: datetime.date
+    object_type:ArtObjectType
+    epoch: str
+    origin_country: Optional[str] = None
+    year: str
     artist_id: Optional[UUID4] = None
     
 class SculptureCreate(ArtObjectBase):
-    material: SculptureMaterialEnum
+    material: str
     height: Optional[str] = None
+    width: Optional[str] = None
     weight: Optional[str] = None
     
 class PaintingCreate(ArtObjectBase):
-    paint_type: PaintingTypeEnum
-    drawn_on: PaintingDrawnOnEnum
+    paint_type: str
+    drawn_on: str
     
 
  
 class OtherArtCreate(ArtObjectBase):
-    type: OtherTypeEnum
+    type:str 
    
 class PermanentCollectionCreate(BaseModel):
     date_acquired:datetime.date
@@ -66,7 +68,7 @@ class BorrowedArtObjectBaseCreate(BaseModel):
 
 class CollectionCreate(BaseModel):
     name: str
-    type: Optional[CollectionType] = None
+    type: Optional[str] = None
     description: Optional[str] = None
     address: Optional[str] = None
     contact: str

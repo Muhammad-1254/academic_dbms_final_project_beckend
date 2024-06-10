@@ -45,17 +45,11 @@ from schemas.museum import (
 from typing import Annotated, Optional, List
 from db.models.data_types import (
     EpochTypeEnum,
-    ObjectStyleEnum,
     OriginEnum,
-    ObjectOwnership,
-    ArtObjectType,
-    CollectionType,
-    OtherTypeEnum,
-    PaintingDrawnOnEnum,
-    PaintingTypeEnum,
-    Role,
-    SculptureMaterialEnum,
+    ObjectStyleEnum,
     StatusTypeEnum,
+    GenderEnum,
+    ArtObjectType
 )
 import datetime
 
@@ -68,94 +62,85 @@ def temp_date():
 
 @router.post("/create/artist")
 async def create_artist_(
-    name: str = Form("sd"),
-    description: str = Form("dsa"),
-    main_style: str = Form(ObjectStyleEnum.ABSTRACT),
-    epoch: str = Form(EpochTypeEnum.ANCIENT),
-    origin_country: str = Form(OriginEnum.AMERICAN),
-    date_of_birth: str = Form(datetime.datetime.date(datetime.datetime.now())),
-    date_of_died: str = Form(datetime.datetime.date(datetime.datetime.now())),
-    files: Annotated[list[UploadFile], File(description="upload images")] = None,
+    artists: list[ArtistCreate],
     db: Session = Depends(get_db),
 ):
-
+    artist_exists = []
+    new_artists = []
     try:
-        artist = ArtistCreate(
-            name=name,
-            description=description,
-            main_style=main_style,
-            epoch=epoch,
-            origin_country=origin_country,
-            date_of_birth=date_of_birth,
-            date_of_died=date_of_died,
-        )
-        artist_exist = db.query(Artist).filter(Artist.name == artist.name).first()
-        print(f"artist_exist: {artist_exist}")
-        if artist_exist:
-            return {"message": "artist already exist with this name"}
-        artist_id = uuid4()
-        results = []
-        for i, file in enumerate(files):
-            result = cloudinary.uploader.upload(
-                file.file, public_id=f"{artist_id}:img:{i}:_:artist"
+        for artist in artists:
+            artist_exist = db.query(Artist).filter(Artist.name == artist.name).first()
+            if artist_exist:
+                print(f"artist_exist.name: {artist_exist.name}")
+                artist_exists.append(artist_exist.name)
+                continue
+            new_artist = Artist(
+                name=artist.name,
+                description=artist.description,
+                artist_bio=artist.artist_bio,
+                gender=artist.gender,
+                origin_country=artist.origin_country,
+                date_of_birth=artist.date_of_birth,
+                date_of_died=artist.date_of_died,
+                wiki_qid=artist.wiki_qid,
+                ulan=artist.ulan,
             )
-            results.append(result["secure_url"])
-        urls = json.dumps(results)
-
-        new_artist = Artist(
-            id=artist_id,
-            name=artist.name,
-            description=artist.description,
-            main_style=artist.main_style,
-            epoch=artist.epoch,
-            origin_country=artist.origin_country,
-            date_of_birth=artist.date_of_birth,
-            date_of_died=artist.date_of_died,
-            image=urls,
-        )
-        db.add(new_artist)
+            new_artists.append(new_artist)
+            
+        db.add_all(new_artists)
         db.commit()
-        db.refresh(new_artist)
-        return {"message": "artist created successfully", "data": new_artist}
+        for i in range(0, len(new_artists)):
+            db.refresh(new_artists[i])
+        return {"message": "artist created successfully", "data": {"new_artists":new_artists, "artist_exists":new_artists}}
     except Exception as e:
         print(e)
         return {"message": f"something went wrong: {e}"}
-
 
 @router.post("/create/art_object/sculpture")
 async def create_sculpture_(
     title: str = Form("title"),
     description: str = Form("desc"),
+    dimensions:str = Form("12*23"),
+    department:str = Form("department"),
     style: str = Form(ObjectStyleEnum.BAROQUE),
-    epoch: str = Form(EpochTypeEnum.MODERN),
-    origin_country: str = Form(OriginEnum.ARAB),
-    year: str = Form(datetime.datetime.date(datetime.datetime.now())),
-    artist_id: str = Form(""),
-    material: str = Form(SculptureMaterialEnum.METAL),
+    epoch: str = Form('epoch'),
+    origin_country: str = Form("country"),
+    year: str = Form("2000"),
+    artist_id: str = Form(""), 
+    material: str = Form("material"),
     height: str = Form("100"),
+    width: str = Form("100"),
     weight: str = Form("12gm"),
     files: Annotated[list[UploadFile], File(description="upload images")] = None,
     db: Session = Depends(get_db),
 ):
     try:
+        object_type = ArtObjectType.SCULPTURE
 
         object = SculptureCreate(
             title=title,
             description=description,
+            dimensions=dimensions,
+            department=department,
             style=style,
+            object_type=object_type,
             epoch=epoch,
             origin_country=origin_country,
             year=year,
-            material=material,
-            weight=weight,
-            height=height,
             artist_id=artist_id,
+            material=material,
+            height=height,
+            width=width,
+            weight=weight
         )
         # first creating art object
         new_art_object = ArtObject(
             title=object.title,
             description=object.description,
+            dimensions=object.dimensions,
+            department=object.department,
             style=object.style,
+            object_type=object.object_type,
             epoch=object.epoch,
             origin_country=object.origin_country,
             year=object.year,
@@ -177,6 +162,7 @@ async def create_sculpture_(
             id=new_art_object.id,
             material=object.material,
             height=object.height,
+            width=object.width,
             weight=object.weight,
             image=urls,
         )
@@ -190,11 +176,13 @@ async def create_sculpture_(
             "objectDescription": new_art_object.description,
             "objectStyle": new_art_object.style,
             "objectEpoch": new_art_object.epoch,
+            "object_type":new_art_object.object_type,
             "objectOriginCountry": new_art_object.origin_country,
             "objectYear": new_art_object.year,
             "artistId": new_art_object.artist_id,
             "sculptureMaterial": new_sculpture.material,
             "sculptureHeight": new_sculpture.height,
+            "sculptureWidth": new_sculpture.weight,
             "sculptureWeight": new_sculpture.weight,
             "sculptureImage": urls,
         }
@@ -212,22 +200,28 @@ async def create_sculpture_(
 async def create_painting_(
     title: str = Form("title"),
     description: str = Form("desc"),
+    dimensions:str = Form("12*23"),
+    department:str = Form("department"),
     style: str = Form(ObjectStyleEnum.BAROQUE),
-    epoch: str = Form(EpochTypeEnum.MODERN),
-    origin_country: str = Form(OriginEnum.ARAB),
-    year: str = Form(datetime.datetime.date(datetime.datetime.now())),
-    artist_id: str = Form(""),
-    paint_type: str = Form(PaintingTypeEnum.INK),
-    drawn_on: str = Form(PaintingDrawnOnEnum.PAPER),
+    epoch: str = Form('epoch'),
+    origin_country: str = Form("country"),
+    year: str = Form("2000"),
+    artist_id: str = Form(""), 
+    paint_type: str = Form("paint_type"),
+    drawn_on: str = Form("drawn_on"),
+    
     files: Annotated[list[UploadFile], File(description="upload images")] = None,
     db: Session = Depends(get_db),
 ):
     try:
+        object_type = ArtObjectType.PAINTING
+        
         object = PaintingCreate(
             title=title,
             description=description,
             style=style,
             epoch=epoch,
+            object_type=object_type,
             origin_country=origin_country,
             year=year,
             artist_id=artist_id,
@@ -239,7 +233,10 @@ async def create_painting_(
         new_art_object = ArtObject(
             title=object.title,
             description=object.description,
+            dimensions=object.dimensions,
+            department=object.department,
             style=object.style,
+            object_type=object.object_type,
             epoch=object.epoch,
             origin_country=object.origin_country,
             year=object.year,
@@ -274,6 +271,7 @@ async def create_painting_(
             "objectDescription": new_art_object.description,
             "objectStyle": new_art_object.style,
             "objectEpoch": new_art_object.epoch,
+            "object_type":new_art_object.object_type,
             "objectOriginCountry": new_art_object.origin_country,
             "objectYear": new_art_object.year,
             "artistId": new_art_object.artist_id,
@@ -295,31 +293,40 @@ async def create_painting_(
 async def create_other_(
     title: str = Form("title"),
     description: str = Form("desc"),
+    dimensions:str = Form("12*23"),
+    department:str = Form("department"),
     style: str = Form(ObjectStyleEnum.BAROQUE),
-    epoch: str = Form(EpochTypeEnum.MODERN),
-    origin_country: str = Form(OriginEnum.ARAB),
-    year: str = Form(datetime.datetime.date(datetime.datetime.now())),
-    artist_id: str = Form(""),
-    type: str = Form(OtherTypeEnum.PHOTO),
+    epoch: str = Form('epoch'),
+    origin_country: str = Form("country"),
+    year: str = Form("2000"),
+    artist_id: str = Form(""), 
+    other_art_type:str = Form("other_art_type"),
+    
     files: Annotated[list[UploadFile], File(description="upload images")] = None,
     db: Session = Depends(get_db),
 ):
     try:
+        object_type = ArtObjectType.OTHER
         object = OtherArtCreate(
             title=title,
             description=description,
             style=style,
             epoch=epoch,
+            object_type=object_type,
             origin_country=origin_country,
             year=year,
             artist_id=artist_id,
-            type=type,
+            type=other_art_type
         )
+
         # first creating art object
         new_art_object = ArtObject(
             title=object.title,
             description=object.description,
+            dimensions=object.dimensions,
+            department=object.department,
             style=object.style,
+            object_type=object.object_type,
             epoch=object.epoch,
             origin_country=object.origin_country,
             year=object.year,
@@ -337,7 +344,8 @@ async def create_other_(
             results.append(result["secure_url"])
         urls = json.dumps(results)
         # now creating sculpture
-        new_other_art = OtherArt(id=new_art_object.id, type=object.type, image=urls)
+        new_other_art = OtherArt(
+            id=new_art_object.id, type=object.type, image=urls)
         db.add(new_other_art)
         db.commit()
         db.refresh(new_other_art)
@@ -348,6 +356,7 @@ async def create_other_(
             "objectDescription": new_art_object.description,
             "objectStyle": new_art_object.style,
             "objectEpoch": new_art_object.epoch,
+            "object_type":new_art_object.object_type,            
             "objectOriginCountry": new_art_object.origin_country,
             "objectYear": new_art_object.year,
             "artistId": new_art_object.artist_id,
@@ -356,7 +365,7 @@ async def create_other_(
         }
 
         return {
-            "message": "Sculpture Art Object created successfully",
+            "message": f"{object_type} Art Object created successfully",
             "data": data,
         }
     except Exception as e:
@@ -501,16 +510,37 @@ async def create_exhibition_association_(
 
 
 
-@router.get("/get/artist")
-async def get_artist_(db: Session = Depends(get_db)):
+@router.get("/get/artist/all/{skip}/{limit}")
+async def get_artist_(skip:int=0, limit:int=10,db: Session = Depends(get_db)):
     try:
-        artists = db.query(Artist).all()
+        artists = db.query(Artist).offset(skip).limit(limit).all()
+        return {"message": "Artists fetched successfully", "data": artists}
+    except Exception as e:
+        print(e)
+        return {"message": f"something went wrong: {e}"}
+    
+@router.get("/get/artist/id/{artist_id}")
+async def get_artist_(artist_id:str,db: Session = Depends(get_db)):
+    try:
+        artists = db.query(Artist).filter(Artist.id == artist_id).first()
         return {"message": "Artists fetched successfully", "data": artists}
     except Exception as e:
         print(e)
         return {"message": f"something went wrong: {e}"}
 
-@router.get("/get/exhibitions/{skip}/{limit}")
+# search artist by name
+@router.get("/get/artist/name/{artist_name}")
+async def get_artist_(artist_name:str,db: Session = Depends(get_db)):
+    try:
+        artists = db.query(Artist).filter(Artist.name.like(f"%{artist_name}%")).limit(5).all()
+        return {"message": "Artists fetched successfully", "data": artists}
+    except Exception as e:
+        print(e)
+        return {"message": f"something went wrong: {e}"}
+
+
+
+@router.get("/get/exhibitions/all/{skip}/{limit}")
 async def get_exhibitions_(skip:int=0, limit: int=10, db: Session = Depends(get_db)):
     try:
 
@@ -521,15 +551,37 @@ async def get_exhibitions_(skip:int=0, limit: int=10, db: Session = Depends(get_
         return {"message": f"something went wrong: {e}"}
 
 
-@router.get("/get/exhibitions/art_object/{skip}/{limit}")
-async def get_exhibitions_(skip:int=0, limit: int=10, db: Session = Depends(get_db)):
+# search exhibition by name
+@router.get("/get/artist/name/{artist_name}")
+async def get_artist_(artist_name:str,db: Session = Depends(get_db)):
     try:
-
-        exhibitions = db.query(Exhibition).offset(skip).limit(limit).all()
-        return {"message": "Exhibitions found successfully", "data": exhibitions}
+        artists = db.query(Artist).filter(Artist.name.like(f"%{artist_name}%")).limit(5).all()
+        return {"message": "Artists fetched successfully", "data": artists}
     except Exception as e:
         print(e)
         return {"message": f"something went wrong: {e}"}
+
+@router.get("/get/exhibitions/art_object/{exhibition_id}/{skip}/{limit}")
+async def get_exhibitions_(exhibition_id:str, skip:int=0, limit: int=10, db: Session = Depends(get_db)):
+    try:
+
+        exhibition_exist = db.query(Exhibition).filter(Exhibition.id == exhibition_id).first()
+        if exhibition_exist is None:
+            return {"message": "Exhibition not found"}
+        exhibition_data =  db.query(ExhibitionArtObjectAssociation
+        ).filter(ExhibitionArtObjectAssociation.exhibition_id == exhibition_id
+        ).offset(skip).limit(limit).all()
+        art_object_data = db.query(ArtObject).filter(ArtObject.id.in_([x.art_object_id for x in exhibition_data])).all()
+        data ={
+            "exhibition": exhibition_exist,
+            "art_objects": art_object_data
+        }
+        return {"message": "Exhibitions found successfully", "data": data}
+    except Exception as e:
+        print(e)
+        return {"message": f"something went wrong: {e}"}
+
+
 
 
 

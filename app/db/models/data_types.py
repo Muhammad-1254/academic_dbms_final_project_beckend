@@ -34,10 +34,6 @@ class SculptureMaterialEnum(Enum):
     OTHER = "other"
 
 
-class OtherTypeEnum(Enum):
-    PRINT = "print"
-    PHOTO = "photo"
-    OTHER = "other"
 
 
 class StatusTypeEnum(Enum):
@@ -54,21 +50,25 @@ class OriginEnum(Enum):
     ARAB = "arab"
     OTHER = "other"
 
+
+    
 class ArtObjectType(Enum):
     PAINTING = "painting"
     SCULPTURE = "sculpture"
-    STATUE = "statue"
     OTHER = "other"
-
+    
+    
 class EpochTypeEnum(Enum):
     RENAISSANCE = "renaissance"
     MODERN = "modern"
     ANCIENT = "ancient"
     OTHER = "other"
 
-class CollectionType(Enum):
-    COLLECTION = "collection"
 
+class GenderEnum(Enum):
+    MALE = "male"
+    FEMALE = "female"
+    
 class Role( Enum):
     ADMIN = "admin"
     MANAGER = 'manager'
@@ -80,3 +80,4 @@ class ObjectOwnership(Enum):
     BORROWED = "borrowed"
     
     
+

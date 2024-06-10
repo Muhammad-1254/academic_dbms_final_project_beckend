@@ -17,14 +17,11 @@ from uuid import uuid4
 from db.models.data_types import (
     EpochTypeEnum,
     OriginEnum,
-    OtherTypeEnum,
     ObjectStyleEnum,
-    PaintingDrawnOnEnum,
-    PaintingTypeEnum,
-    SculptureMaterialEnum,
     StatusTypeEnum,
-    CollectionType,
-    ArtObjectType,
+    GenderEnum,
+    ArtObjectType
+    
 )
 
 
@@ -34,15 +31,15 @@ class Artist(Base, Timestamp):
     __tablename__ = "artists"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = Column(VARCHAR(255), index=True, nullable=False)
-    description = Column(String, nullable=False)
-    main_style = Column(Enum(ObjectStyleEnum), nullable=False)
-    epoch = Column(Enum(EpochTypeEnum), nullable=True)
-    origin_country = Column(Enum(OriginEnum), nullable=True)
+    description = Column(String, nullable=True)
+    artist_bio = Column(String, nullable=True) 
+    gender = Column(Enum(GenderEnum), nullable=True)
+    origin_country = Column(VARCHAR(50), nullable=True)
     date_of_birth = Column(Date, nullable=True)
     date_of_died = Column(Date, nullable=True)
-    image = Column(JSON, nullable=True)
-
-
+    wiki_qid = Column(String, nullable=True)
+    ulan = Column(String, nullable=True)
+    
     art_objects = relationship(
         "ArtObject",back_populates="artist", cascade="save-update"
     )
@@ -54,12 +51,14 @@ class ArtObject(Base, Timestamp):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     title = Column(VARCHAR(255), nullable=False)
-    description = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    dimensions = Column(VARCHAR(100), nullable=True)
+    department = Column(VARCHAR(100), nullable=True)
     style = Column(Enum(ObjectStyleEnum), nullable=False)
-
-    epoch = Column(Enum(EpochTypeEnum), nullable=False)
-    origin_country = Column(Enum(OriginEnum), nullable=True)
-    year = Column(Date)
+    object_type = Column(Enum(ArtObjectType), nullable=False)
+    epoch = Column(VARCHAR(80), nullable=True)
+    origin_country = Column(String, nullable=True)
+    year = Column(String, nullable=False)
     artist_id = Column(UUID, ForeignKey("artists.id"), nullable=True)
    
     artist = relationship("Artist", back_populates="art_objects")
@@ -103,25 +102,14 @@ class Sculpture(Base, Timestamp):
         ForeignKey("art_objects.id"),
         primary_key=True,
     )
-    material = Column(Enum(SculptureMaterialEnum), nullable=False)
-    height = Column(String, nullable=True)
-    weight = Column(String, nullable=True)
+    material = Column(VARCHAR(100), nullable=False)
+    height = Column(VARCHAR(50), nullable=True)
+    width = Column(VARCHAR(50), nullable=True)
+    weight = Column(VARCHAR(50), nullable=True)
     image = Column(JSON, nullable=True)
 
     art_object = relationship("ArtObject", back_populates="sculpture")
 
-
-class OtherArt(Base, Timestamp):
-    __tablename__ = "other_arts"
-    id = Column(
-        UUID,
-        ForeignKey("art_objects.id"),
-        primary_key=True,
-    )
-    type = Column(Enum(OtherTypeEnum), nullable=False)
-    image = Column(JSON, nullable=True)
-
-    art_object = relationship("ArtObject", back_populates="other")
 
 
 class Painting(Base, Timestamp):
@@ -131,11 +119,23 @@ class Painting(Base, Timestamp):
         ForeignKey("art_objects.id"),
         primary_key=True,
     )
-    paint_type = Column(Enum(PaintingTypeEnum), nullable=False)
-    drawn_on = Column(Enum(PaintingDrawnOnEnum), nullable=False)
+    paint_type = Column(VARCHAR(50), nullable=False)
+    drawn_on = Column(VARCHAR(50), nullable=False)
     image = Column(JSON, nullable=True)
 
     art_object = relationship("ArtObject", back_populates="painting")
+
+class OtherArt(Base, Timestamp):
+    __tablename__ = "other_arts"
+    id = Column(
+        UUID,
+        ForeignKey("art_objects.id"),
+        primary_key=True,
+    )
+    type = Column(VARCHAR(100), nullable=False)
+    image = Column(JSON, nullable=True)
+
+    art_object = relationship("ArtObject", back_populates="other")
 
 
 class PermanentCollection(Base, Timestamp):
@@ -146,7 +146,6 @@ class PermanentCollection(Base, Timestamp):
     cost = Column(String, nullable=True)
    
     art_object_id = Column(UUID, ForeignKey('art_objects.id'),nullable=False)
-    
     art_object = relationship("ArtObject", back_populates="permanent")
 
 
@@ -167,7 +166,7 @@ class Collection(Base, Timestamp):
     __tablename__ = "collections"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = Column(String, index=True)
-    type = Column(Enum(CollectionType), nullable=True)
+    type = Column(VARCHAR(100), nullable=True)
     description = Column(String, nullable=True)
     address = Column(String, nullable=True)
     contact = Column(String, nullable=False)
