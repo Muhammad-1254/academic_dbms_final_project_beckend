@@ -8,7 +8,7 @@ import datetime
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
-
+import os
 
 
 auth_token_file_name = 'app/temp/auth_tokens.npy'
@@ -66,9 +66,9 @@ def sendEmail(email:str, subject:str, message:str):
 def initialize_cloudinary():
     # Configure Cloudinary
     config = cloudinary.config(
-    cloud_name='dixda8etb',
-    api_key='623182473499643',
-    api_secret='b3aYz5IcU8PlDaD8Vdx7rX22Pxk'
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
     # config = cloudinary.config(secure=True)
     print("****1. Set up and configure the SDK:****\nCredentials: ", config.cloud_name, config.api_key, "\n")

@@ -517,14 +517,34 @@ async def create_exhibition_association_(
         return {"message": f"something went wrong: {e}"}
 
 
-@router.get("/get/artist/all")
-async def get_artist_(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+@router.get("/get/artist/all/{skip}/{limit}")
+async def get_artist_(
+    
+   sort_by_dob: bool = Query(True),
+    sort_by_name: bool = Query(True),
+    skip: int = 0,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+    ):
     try:
-        artists = db.query(Artist).offset(skip).limit(limit).all()
+        if sort_by_dob:
+            query = (
+                db.query(Artist).order_by(Artist.date_of_birth)
+            )
+        else:
+            query = (
+                db.query(Artist).order_by(Artist.date_of_birth.desc())
+            )
+        if sort_by_name:
+            query = query.order_by(Artist.name)
+        else:
+            query = query.order_by(Artist.name.desc())
+        artists = query.offset(skip).limit(limit).all()
+
         return {"message": "Artists fetched successfully", "data": artists}
     except Exception as e:
         print(e)
-        return {"message": f"something went wrong: {e}"}
+        return {"message": f"something went wrong: {e}", "data": []}
 
 
 @router.get("/get/artist/id/{artist_id}")
@@ -539,17 +559,16 @@ async def get_artist_(artist_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         print(e)
         return {"message": f"something went wrong: {e}"}
-@router.get("/get/artist/id/all")
-async def get_artist_ids_(db: Session=Depends(get_db)):
+@router.get("/get/artist/all/ids")
+async def get_artist_ids_(db: Session = Depends(get_db)):
     try:
-        artists = db.query(Artist.id).all()
-        # ids = [id[0] for id in artists]
-        artists[0]
-        return {"data": artists}
+        # Query to get all artist IDs
+            ids = db.query(Artist.id).all()
+            return {"data": [id[0] for id in ids]}
+
     except Exception as e:
         print(e)
         return {"message": f"something went wrong: {e}"}
-
 # search artist by name
 @router.get("/get/artist/name/{artist_name}")
 async def get_artist_(artist_name: str, db: Session = Depends(get_db)):
@@ -563,14 +582,12 @@ async def get_artist_(artist_name: str, db: Session = Depends(get_db)):
         return {"message": f"something went wrong: {e}"}
 
 
-@router.get("/get/art_object/artist/all/{artist_id}/{skip}/{limit}")
+@router.get("/get/art_object/artist/all/{artist_id}")
 async def get_artist_data(
-    artist_id: str, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
+    artist_id: str,  db: Session = Depends(get_db)
 ):
     try:
-        print(f"artist_id: {artist_id}")
-        print(f"skip: {skip}")
-        print(f"limit: {limit}")
+     
 
         artist_exist = db.query(Artist).filter(Artist.id == artist_id).first()
         if artist_exist is None:
@@ -586,9 +603,8 @@ async def get_artist_data(
                 joinedload(ArtObject.sculpture),
                 joinedload(ArtObject.painting),
                 joinedload(ArtObject.other),
+
             )
-            .offset(skip)
-            .limit(limit)
         )
 
         art_objects = art_objects_query.all()
@@ -596,7 +612,39 @@ async def get_artist_data(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="ArtObjects not found"
             )
-        return {"message": "Artists fetched successfully", "data": art_objects}
+        data = []
+        for art_object in art_objects:
+            if art_object.object_type == ArtObjectType.SCULPTURE and not art_object.sculpture.image is  None:
+                
+                data.append(
+                    {
+                    "id": art_object.id,
+                    "object_type": art_object.object_type,
+                    "image": art_object.sculpture.image,
+                    }
+            )
+            elif art_object.object_type == ArtObjectType.PAINTING and not art_object.painting.image is  None:
+                
+                data.append(
+                    {
+                    "id": art_object.id,
+                    "object_type": art_object.object_type,
+                    "image": art_object.painting.image,
+                    }
+            )
+            elif art_object.object_type == ArtObjectType.OTHER and not art_object.other.image is  None:
+                
+                data.append(
+                    {
+                    "id": art_object.id,
+                    "object_type": art_object.object_type,
+                    "image": art_object.other.image,
+                    }
+            )
+        
+        
+        
+        return {"art_objects": data, "artist":artist_exist}
     except Exception as e:
         print(e)
         return {"message": f"something went wrong: {e}"}

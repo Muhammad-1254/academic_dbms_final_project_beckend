@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
-connection_string = 'postgresql://usmansoomro1234:Q1crbwy8CTXe@ep-wispy-art-23975610.ap-southeast-1.aws.neon.tech/rdbms_project?sslmode=require'
+import os
+connection_string = os.getenv("DATABASE_URL")
 
 
 engine = create_engine(connection_string)

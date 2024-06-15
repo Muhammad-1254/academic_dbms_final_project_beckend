@@ -16,10 +16,10 @@ import cloudinary.uploader
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    load_dotenv()
     Base.metadata.create_all(bind=engine)
     utils.initialize_cloudinary()
     yield
