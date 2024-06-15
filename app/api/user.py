@@ -1,4 +1,4 @@
-from fastapi import Response,Request, Depends, HTTPException, status, APIRouter, UploadFile, File
+from fastapi import Response,Request,Form,Query, Depends, HTTPException, status, APIRouter, UploadFile, File
 from sqlalchemy.orm import Session
 import json
 from db.database import get_db
@@ -53,6 +53,7 @@ async def login(person: PersonLogin, response: Response, db: Session = Depends(g
             "username": person_exist.username,
             "isAuth":person_exist.is_auth,
             "role": person.role.value,
+            "profileImage":person_exist.image
         }
 
 
@@ -160,20 +161,54 @@ async def update(person: PersonUpdate,request:Request, db: Session = Depends(get
            
     except Exception as e:
         print(f"error: {e}")
-        return {"message": f"Somthing went wrong: {e}"}
+        return {"message": f"Somtheing went wrong: {e}"}
 
 
 
-@router.post('/profile/upload')
-async def upload_image_(person: PersonImage, file:UploadFile=File(...),  db: Session = Depends(get_db)):
-    print(f"person: {person}")
+
+@router.get("/profile/image")
+async def get_image_(
+    email: str = Query(''),
+    role: Role = Query(Role.USER),
+    
+     db: Session = Depends(get_db)
+    ):
     try:
-        if person.role == Role.USER:
-            person_exist = db.query(User).filter(User.email == person.email).first()
-        elif person.role == Role.MANAGER:
-            person_exist = db.query(Manager).filter(Manager.email == person.email).first()
-        elif person.role == Role.ADMIN:
-            person_exist = db.query(Admin).filter(Admin.email == person.email).first()
+        if role == Role.USER:
+            person_exist = db.query(User).filter(User.email == email).first()
+        elif role == Role.MANAGER:
+            person_exist = db.query(Manager).filter(Manager.email == email).first()
+        elif role == Role.ADMIN:
+            person_exist = db.query(Admin).filter(Admin.email == email).first()
+        
+        if person_exist is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        return {"message":"profile image deleted successfully","data":person_exist.image}
+    except Exception as e:
+        print(f"error: {e}")
+        return {"message": f"Something went wrong: {e}"}
+
+
+
+
+@router.post('/profile/image')
+async def upload_image_(
+    email: str = Form("usman"),
+    role: Role = Form(Role.USER),
+    
+     file:UploadFile=File(...), 
+     db: Session = Depends(get_db)
+    
+    ):
+    try:
+        if role == Role.USER:
+            person_exist = db.query(User).filter(User.email == email).first()
+        elif role == Role.MANAGER:
+            person_exist = db.query(Manager).filter(Manager.email == email).first()
+        elif role == Role.ADMIN:
+            person_exist = db.query(Admin).filter(Admin.email == email).first()
         
         if person_exist is None:
             raise HTTPException(
@@ -190,14 +225,20 @@ async def upload_image_(person: PersonImage, file:UploadFile=File(...),  db: Ses
 
 
 @router.put("/profile/image")
-async def update_image_(person:PersonImage, file:UploadFile=File(...), db: Session=Depends(get_db)):
+async def update_image_(
+     email: str = Form("usman"),
+    role: Role = Form(Role.USER),
+    
+     file:UploadFile=File(...), 
+     db: Session = Depends(get_db)
+    ):
     try:
-        if person.role == Role.USER:
-            person_exist = db.query(User).filter(User.email == person.email).first()
-        elif person.role == Role.MANAGER:
-            person_exist = db.query(Manager).filter(Manager.email == person.email).first()
-        elif person.role == Role.ADMIN:
-            person_exist = db.query(Admin).filter(Admin.email == person.email).first()
+        if role == Role.USER:
+            person_exist = db.query(User).filter(User.email == email).first()
+        elif role == Role.MANAGER:
+            person_exist = db.query(Manager).filter(Manager.email == email).first()
+        elif role == Role.ADMIN:
+            person_exist = db.query(Admin).filter(Admin.email == email).first()
         
         if person_exist is None:
             raise HTTPException(
@@ -214,14 +255,19 @@ async def update_image_(person:PersonImage, file:UploadFile=File(...), db: Sessi
 
 
 @router.delete("/profile/image")
-async def update_image_(person:PersonImage, file:UploadFile=File(...), db: Session=Depends(get_db)):
+async def update_image_(
+    email: str = Form("usman"),
+    role: Role = Form(Role.USER),
+    
+     db: Session = Depends(get_db)
+    ):
     try:
-        if person.role == Role.USER:
-            person_exist = db.query(User).filter(User.email == person.email).first()
-        elif person.role == Role.MANAGER:
-            person_exist = db.query(Manager).filter(Manager.email == person.email).first()
-        elif person.role == Role.ADMIN:
-            person_exist = db.query(Admin).filter(Admin.email == person.email).first()
+        if role == Role.USER:
+            person_exist = db.query(User).filter(User.email == email).first()
+        elif role == Role.MANAGER:
+            person_exist = db.query(Manager).filter(Manager.email == email).first()
+        elif role == Role.ADMIN:
+            person_exist = db.query(Admin).filter(Admin.email == email).first()
         
         if person_exist is None:
             raise HTTPException(
@@ -238,8 +284,38 @@ async def update_image_(person:PersonImage, file:UploadFile=File(...), db: Sessi
         return {"message": f"Something went wrong: {e}"}
 
 
+@router.delete('/delete')
+async def delete_user_(
+    email: str = Form("usman"),
+    role: Role = Form(Role.USER),
+    
+     db: Session = Depends(get_db)
+    ):
+    try:
+        if role == Role.USER:
+            person_exist = db.query(User).filter(User.email == email).first()
+        elif role == Role.MANAGER:
+            person_exist = db.query(Manager).filter(Manager.email == email).first()
+        elif role == Role.ADMIN:
+            person_exist = db.query(Admin).filter(Admin.email == email).first()
+        
+        if person_exist is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        result = cloudinary.uploader.destroy(public_id=f"{person_exist.id}:_:profile")
+        print(f"deleted profile image result: {result}")
+
+        db.delete(person_exist)
+        db.commit()
+        return {"message":"User deleted successfully"}
+    except Exception as e:
+        print(f"error: {e}")
+        return {"message": f"Something went wrong: {e}"}
+
+
 @router.get("/user/authorize/generate_new_token")
-async def new_token_(user_id:str, email:str, db:Session = Depends(get_db)):
+async def new_token_(user_id:str, email:str, ):
     try:
         
         new_token = utils.generate_new_auth_token(user_id)

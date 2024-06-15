@@ -59,27 +59,27 @@ class ArtObject(Base, Timestamp):
     epoch = Column(VARCHAR(80), nullable=True)
     origin_country = Column(String, nullable=True)
     year = Column(String, nullable=False)
-    artist_id = Column(UUID, ForeignKey("artists.id"), nullable=True)
+    artist_id = Column(UUID, ForeignKey("artists.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True)
    
     artist = relationship("Artist", back_populates="art_objects")
     
     exhibitions = relationship(
         "Exhibition",secondary="exhibition_art_object_association", back_populates="art_objects", 
     )
-    sculpture = relationship("Sculpture", uselist=False, back_populates="art_object")
-    painting = relationship("Painting", uselist=False, back_populates="art_object")
-    other = relationship("OtherArt", uselist=False, back_populates="art_object")
-    permanent = relationship("PermanentCollection", uselist=False, back_populates="art_object")
+    sculpture = relationship("Sculpture", uselist=False, back_populates="art_object",cascade="all, delete-orphan")
+    painting = relationship("Painting", uselist=False, back_populates="art_object",cascade="all, delete-orphan")
+    other = relationship("OtherArt", uselist=False, back_populates="art_object",cascade="all, delete-orphan")
+    permanent = relationship("PermanentCollection", uselist=False, back_populates="art_object",cascade="all, delete-orphan")
     borrowed_art_object = relationship(
-        "BorrowedArtObject", uselist=False, back_populates="art_object"
+        "BorrowedArtObject", uselist=False, back_populates="art_object",cascade="all, delete-orphan"
     )
 
 
 class ExhibitionArtObjectAssociation(Base, Timestamp):
     __tablename__ = "exhibition_art_object_association"
   
-    art_object_id = Column(UUID, ForeignKey('art_objects.id'), primary_key=True)
-    exhibition_id = Column(UUID, ForeignKey('exhibitions.id'), primary_key=True)
+    art_object_id = Column(UUID, ForeignKey('art_objects.id', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
+    exhibition_id = Column(UUID, ForeignKey('exhibitions.id', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
     
 
 class Exhibition(Base, Timestamp):
@@ -99,7 +99,7 @@ class Sculpture(Base, Timestamp):
     __tablename__ = "sculptures"
     id = Column(
         UUID,
-        ForeignKey("art_objects.id"),
+        ForeignKey("art_objects.id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
     material = Column(VARCHAR(100), nullable=False)
@@ -116,7 +116,7 @@ class Painting(Base, Timestamp):
     __tablename__ = "paintings"
     id = Column(
         UUID,
-        ForeignKey("art_objects.id"),
+        ForeignKey("art_objects.id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
     paint_type = Column(VARCHAR(50), nullable=False)
@@ -129,7 +129,7 @@ class OtherArt(Base, Timestamp):
     __tablename__ = "other_arts"
     id = Column(
         UUID,
-        ForeignKey("art_objects.id"),
+        ForeignKey("art_objects.id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
     type = Column(VARCHAR(100), nullable=False)
@@ -145,7 +145,7 @@ class PermanentCollection(Base, Timestamp):
     status = Column(Enum(StatusTypeEnum), nullable=False)
     cost = Column(String, nullable=True)
    
-    art_object_id = Column(UUID, ForeignKey('art_objects.id'),nullable=False)
+    art_object_id = Column(UUID, ForeignKey('art_objects.id',ondelete="CASCADE", onupdate="CASCADE"),nullable=False)
     art_object = relationship("ArtObject", back_populates="permanent")
 
 
@@ -155,8 +155,8 @@ class BorrowedArtObject(Base, Timestamp):
     date_borrowed = Column(Date, nullable=False)
     date_returned = Column(Date, nullable=True)
     
-    art_object_id = Column(UUID, ForeignKey('art_objects.id'), nullable=False)
-    collection_id = Column(UUID, ForeignKey('collections.id'), nullable=False)
+    art_object_id = Column(UUID, ForeignKey('art_objects.id',ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    collection_id = Column(UUID, ForeignKey('collections.id',ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     
     art_object = relationship("ArtObject", back_populates="borrowed_art_object")
     collection = relationship("Collection", back_populates="borrowed_art_objects")

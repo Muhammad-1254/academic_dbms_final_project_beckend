@@ -3,10 +3,14 @@
         "cloudinary",
         "dotenv",
         "fastapi",
+        "isnot",
+        "joinedload",
         "ondelete",
+        "onupdate",
         "pydantic",
         "scuessfully",
         "sqlalchemy",
-        "uselist"
+        "uselist",
+        "usman"
     ]
 }
