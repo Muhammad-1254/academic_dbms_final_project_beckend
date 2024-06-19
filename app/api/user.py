@@ -7,7 +7,7 @@ from schemas.person import PersonLogin, PersonSignup, PersonUpdate, PersonImage,
 from db.models.person import User, Admin, Manager
 from fastapi.responses import Response
 import cloudinary.uploader
-
+from fastapi.responses import JSONResponse
 from db.models.data_types import Role 
 
 
@@ -21,7 +21,7 @@ auth_token_file_name = 'app/temp/auth_tokens.npy'
 
 
 @router.post("/login")
-async def login(person: PersonLogin, response: Response, db: Session = Depends(get_db)):
+async def login(person: PersonLogin,  db: Session = Depends(get_db)):
     try:
 
         person_exist = utils.get_person_by_email(person.email, person.role, db)
@@ -35,18 +35,7 @@ async def login(person: PersonLogin, response: Response, db: Session = Depends(g
                 detail="email or password is invalid",
             )
 
-        # user_credentials = json.dumps(
-        #     {
-        #         "email": person_exist.email,
-        #         "password": f"hashed:{person_exist.password}",
-        #         "role": person.role.value,
-        #     }
-        # )
-
-        # # setting cookies to user browser
-        # response.set_cookie(
-        #     key="user_credentials", value=user_credentials,    
-        # )
+       
         data = {
             "userId":person_exist.id,
             "email": person_exist.email,
@@ -57,15 +46,20 @@ async def login(person: PersonLogin, response: Response, db: Session = Depends(g
         }
 
 
-        return {"message": "user login successfully", "data":data}
+        return {"message": "user login successfully", "data": data}
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        print(f"error: {e}")
-        return {"message": f"Something went wrong: {e}"}
+        print(f"Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred."
+        )
 
 
 @router.post("/signup")
 async def signup(
-    person: PersonSignup, response: Response, db: Session = Depends(get_db)
+    person: PersonSignup, db: Session = Depends(get_db)
 ):
     try:
         person_exist = utils.get_person_by_email(person.email, person.role, db)
@@ -92,27 +86,18 @@ async def signup(
                 email=person.email,
                 password=person.password,
             )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid role.",
+            )
             
 
         db.add(new_person)
         db.commit()
         db.refresh(new_person)
        
-       
-        # setting cookies to user browser
-        # user_credentials = json.dumps(
-        #     {
-        #         "email": person.email,
-        #         "password": f"hashed:{person.password}",
-        #         "role": person.role.value,
-        #     }
-        # )
-
-        # response.set_cookie(
-        #     key="user_credentials", value=user_credentials, 
-        # )
-
-        # checking if user then generating auth token and email to user
+     
         if person.role.value == "user":
             print(new_person.id)       
             new_token = utils.generate_new_auth_token(new_person.id)
@@ -125,11 +110,14 @@ async def signup(
             "role": person.role.value,
         }
         return {"message": "user signup successfully", "data": data}
-
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        print(f"error: {e}")
-        return {"message": f"Something went wrong: {e}"}
-
+        print(f"Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred."
+        )
 
 
 @router.put("/update_username")
@@ -346,8 +334,6 @@ async def authorize_user_(token:UserValidateToken, db: Session = Depends(get_db)
     except Exception as e:
         print(f"error: {e}")
         return {"message": f"Something went wrong: {e}"}
-
-
 
 
 

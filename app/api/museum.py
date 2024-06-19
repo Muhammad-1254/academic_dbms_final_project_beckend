@@ -1047,3 +1047,34 @@ async def get_painting_object_path_(
     except Exception as e:
         print(e)
         return {"message": f"something went wrong: {e}"}
+
+
+
+# fetch homepage data
+@router.get("/get/homepage/data")
+async def get_homepage_data_(
+    db: Session = Depends(get_db),
+):
+    try:
+        sculpture_data = db.query(ArtObject).options(
+            joinedload(ArtObject.sculpture)
+            ).filter(ArtObject.sculpture !=None
+            ).order_by(ArtObject.year).limit(10).all()
+        painting_data = db.query(ArtObject).options(
+            joinedload(ArtObject.painting)
+            ).filter(ArtObject.painting !=None
+            ).order_by(ArtObject.year).limit(10).all()
+        other_data = db.query(ArtObject).options(
+            joinedload(ArtObject.other)
+            ).filter(ArtObject.other !=None
+            ).order_by(ArtObject.year).limit(10).all()
+        exhibition_data = db.query(Exhibition).order_by(Exhibition.end_date).limit(5).all()
+        
+        
+
+        data = {"sculpture_data":sculpture_data,"painting_data":painting_data,"other_data":other_data,"exhibition_data":exhibition_data}
+        
+        return {"message": "Home page data fetched successfully", "data": data}
+    except Exception as e:
+        print(e)
+        return {"message": f"something went wrong: {e}"}
